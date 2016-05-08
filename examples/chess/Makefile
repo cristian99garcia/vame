@@ -10,6 +10,7 @@ VAME_SRC = ../../src/area.vala \
            ../../src/sprite.vala \
            ../../src/text.vala \
            ../../src/sound.vala \
+           ../../src/globals.vala \
            ../../src/utils.vala
 
 SRC = src/chess.vala \

@@ -18,12 +18,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace Vame {
 
-    public enum ButtonType {
-        LEFT,
-        MIDDLE,
-        RIGHT
-    }
-
     public class GameArea: Gtk.DrawingArea {
 
         public signal void click(Vame.ButtonType button, int x, int y);
@@ -35,10 +29,7 @@ namespace Vame {
         public GLib.List<Vame.Sprite> sprites;
         public GLib.List<Vame.Text> texts;
         public Vame.SoundManager sound_manager;
-
-        public bool use_bg_color = true;
-        public bool use_bg_image = false;
-        public bool use_bg_function = false;
+        public Vame.BGType bg_type;
 
         public double[] background_color = { 1, 1, 1 };
         public Vame.Image background_image;
@@ -49,6 +40,7 @@ namespace Vame {
             this.sprites = new GLib.List<Vame.Sprite>();
             this.texts = new GLib.List<Vame.Text>();
             this.sound_manager = new Vame.SoundManager();
+            this.bg_type = Vame.BGType.COLOR;
 
             this.add_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                             Gdk.EventMask.BUTTON_RELEASE_MASK |
@@ -108,9 +100,7 @@ namespace Vame {
         }
 
         public void set_background_color(double? r = null, double? g = null, double? b = null) {
-            this.use_bg_color = true;
-            this.use_bg_image = false;
-            this.use_bg_function = false;
+            this.bg_type = Vame.BGType.COLOR;
 
             double red = (r != null)? r: this.background_color[0];
             double green = (g != null)? g: this.background_color[1];
@@ -121,9 +111,7 @@ namespace Vame {
         }
 
         public void set_use_background_function() {
-            this.use_bg_function = true;
-            this.use_bg_image = false;
-            this.use_bg_color = false;
+            this.bg_type = Vame.BGType.FUNCTION;
         }
 
         public void redraw() {
@@ -187,12 +175,16 @@ namespace Vame {
             }
 
             // Draw background
-            if (this.use_bg_color) {
-                context.set_source_rgb(this.background_color[0], this.background_color[1], this.background_color[2]);
-                context.rectangle(0, 0, alloc.width, alloc.height);
-                context.fill();
-            } else if (this.use_bg_function) {
-                this.draw_background(context);
+            switch (this.bg_type) {
+                case Vame.BGType.COLOR:
+                    context.set_source_rgb(this.background_color[0], this.background_color[1], this.background_color[2]);
+                    context.rectangle(0, 0, alloc.width, alloc.height);
+                    context.fill();
+                    break;
+
+                case Vame.BGType.FUNCTION:
+                    this.draw_background(context);
+                    break;
             }
 
             // Draw all sprites
@@ -220,8 +212,8 @@ namespace Vame {
                 context.select_font_face(text.font_face, Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
                 context.show_text(text.text);
             }
+
             return false;
         }
     }
 }
-
