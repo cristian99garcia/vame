@@ -35,7 +35,8 @@ namespace Vame {
         private double _rotation;
         private double _scale = 1.0;
         private bool _flip;
-        private Gdk.Rectangle rect;
+        
+        public Gdk.Rectangle rect;
 
         private Vame.GameArea? area = null;
         private ulong? handler_click = null;
@@ -161,6 +162,34 @@ namespace Vame {
                 this.pointer_in = false;
                 this.mouse_out();
             }
+        }
+
+        public bool check_collision(Vame.Sprite sprite) {
+            int x1 = this.x;
+            int y1 = this.y;
+
+            int x2 = this.x + this.image.width;
+            int y2 = this.y + this.image.height;
+
+            int x3 = this.x;
+            int y3 = this.y + this.image.height;
+
+            int x4 = this.x + this.image.width;
+            int y4 = this.y;
+
+            bool check1 = (x1 >= sprite.x && x1 <= sprite.x + sprite.image.width &&
+                           y1 >= sprite.y && y1 <= sprite.y + sprite.image.height);
+
+            bool check2 = (x2 >= sprite.x && x2 <= sprite.x + sprite.image.width &&
+                           y2 >= sprite.y && y2 <= sprite.y + sprite.image.height);
+
+            bool check3 = (x3 >= sprite.x && x3 <= sprite.x + sprite.image.width &&
+                           y3 >= sprite.y && y3 <= sprite.y + sprite.image.height);
+
+            bool check4 = (x4 >= sprite.x && x4 <= sprite.x + sprite.image.width &&
+                           y4 >= sprite.y && y4 <= sprite.y + sprite.image.height);
+
+            return (check1 || check2 || check3 || check4);
         }
     }
 }
