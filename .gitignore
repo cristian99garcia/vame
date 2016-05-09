@@ -1,2 +1,3 @@
 examples/chess/chess
 examples/collision/collision
+examples/gtk_integration/gtk_integration
