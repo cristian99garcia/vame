@@ -37,7 +37,7 @@ public class CollisionExample: Gtk.Window {
 
         this.area = new Vame.GameArea();  // Make a new GameArea instance
         this.area.set_size_request(400, 400);
-        this.area.motion.connect(this.mouse_motion_cb);  // Connect "motion" signal
+        this.area.pointer_motion.connect(this.pointer_motion_cb);  // Connect "pointer_motion" signal
         this.box.pack_start(this.area, true, true, 0);  // And add it into a Gtk.Widget
 
         this.text = new Vame.Text("Sin colisión");
@@ -62,7 +62,7 @@ public class CollisionExample: Gtk.Window {
         return GLib.Path.build_filename(this.local_path, @"src/icons/$name");
     }
 
-    public void mouse_motion_cb(Vame.GameArea area, int x, int y) {
+    public void pointer_motion_cb(Vame.GameArea area, int x, int y) {
         this.sprite1.set_pos(x - this.sprite1.image.width / 2, y - this.sprite1.image.height / 2);
         this.check_collision();
     }

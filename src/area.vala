@@ -22,7 +22,9 @@ namespace Vame {
 
         public signal void click(Vame.ButtonType button, int x, int y);
         public signal void click_released(Vame.ButtonType button, int x, int y);
-        public signal void motion(int x, int y);
+        public signal void pointer_motion(int x, int y);
+        public signal void key_pressed(string key);
+        public signal void key_released(string key);
         public signal void size_changed(int width, int height);
         public signal void draw_background(Cairo.Context context);
 
@@ -35,21 +37,177 @@ namespace Vame {
         public Vame.Image background_image;
 
         private int[] size = { 0, 0 };
+        private string[] pressed_keys;
+
+        public int key_delay = 15;
 
         public GameArea() {
             this.sprites = new GLib.List<Vame.Sprite>();
             this.texts = new GLib.List<Vame.Text>();
             this.sound_manager = new Vame.SoundManager();
             this.bg_type = Vame.BGType.COLOR;
+            this.pressed_keys = { };
 
             this.add_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                             Gdk.EventMask.BUTTON_RELEASE_MASK |
-                            Gdk.EventMask.POINTER_MOTION_MASK);
+                            Gdk.EventMask.POINTER_MOTION_MASK |
+                            Gdk.EventMask.KEY_PRESS_MASK |
+                            Gdk.EventMask.KEY_RELEASE_MASK);
 
             this.button_press_event.connect(this.button_press_event_cb);
             this.button_release_event.connect(this.button_release_event_cb);
             this.motion_notify_event.connect(this.motion_notify_event_cb);
+            this.key_press_event.connect(this.key_press_event_cb);
+            this.key_release_event.connect(this.key_release_event_cb);
             this.draw.connect(this.draw_cb);
+        }
+
+        private bool button_press_event_cb(Gtk.Widget self, Gdk.EventButton event) {
+            if (event.get_event_type() == Gdk.EventType.BUTTON_PRESS &&
+                event.get_event_type() != Gdk.EventType.DOUBLE_BUTTON_PRESS &&
+                event.get_event_type() != Gdk.EventType.TRIPLE_BUTTON_PRESS) {
+
+                ButtonType type = ButtonType.LEFT;
+                if (event.button == 1) {
+                    type = ButtonType.LEFT;
+                } else if (event.button == 2) {
+                    type = ButtonType.MIDDLE;
+                } else if (event.button == 3) {
+                    type = ButtonType.RIGHT;
+                }
+
+                this.click_released(type, (int)event.x, (int)event.y);
+                this.click(type, (int)event.x, (int)event.y);
+            }
+            return false;
+        }
+
+        private bool button_release_event_cb(Gtk.Widget self, Gdk.EventButton event) {
+            if (event.get_event_type() == Gdk.EventType.BUTTON_RELEASE &&
+                event.get_event_type() != Gdk.EventType.DOUBLE_BUTTON_PRESS &&
+                event.get_event_type() != Gdk.EventType.TRIPLE_BUTTON_PRESS) {
+
+                ButtonType type = ButtonType.LEFT;
+                if (event.button == 1) {
+                    type = ButtonType.LEFT;
+                } else if (event.button == 2) {
+                    type = ButtonType.MIDDLE;
+                } else if (event.button == 3) {
+                    type = ButtonType.RIGHT;
+                }
+
+                this.click_released(type, (int)event.x, (int)event.y);
+            }
+            return false;
+        }
+
+        private bool motion_notify_event_cb(Gtk.Widget self, Gdk.EventMotion event) {
+            this.pointer_motion((int)event.x, (int)event.y);
+            return false;
+        }
+
+        private bool key_press_event_cb(Gtk.Widget self, Gdk.EventKey event) {
+            string? key = Gdk.keyval_name(event.keyval);
+
+            // check with (key != null && !(key in this.pressed_keys)) throw some warnings
+            if (key == null) {
+                return false;
+            }
+
+            foreach (string _key in this.pressed_keys) {
+                if (_key == key) {
+                    return false;
+                }
+            }
+
+            this.pressed_keys += key;
+
+            GLib.Timeout.add(this.key_delay, () => {
+                this.key_pressed(key);
+
+                // check with (key in this.pressed_keys) throw some warnings
+                foreach (string _key in this.pressed_keys) {
+                    if (_key == key) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
+            return false;
+        }
+
+        private bool key_release_event_cb(Gtk.Widget self, Gdk.EventKey event) {
+            string? key = Gdk.keyval_name(event.keyval);
+
+            // check with (key != null && key in this.pressed_keys) throw some warnings
+            if (key == null) {
+                return false;
+            }
+
+            string[] keys = { };
+            foreach (string _key in this.pressed_keys) {
+                if (_key != key) {
+                    keys += _key;
+                }
+            }
+
+            this.pressed_keys = keys;
+            this.key_released(key);
+
+            return false;
+        }
+
+        private bool draw_cb(Gtk.Widget self, Cairo.Context context) {
+            Gtk.Allocation alloc;
+            this.get_allocation(out alloc);
+
+            if (this.size[0] != alloc.width || this.size[1] != alloc.height) {
+                this.size = { alloc.width, alloc.height };
+                this.size_changed(alloc.width, alloc.height);
+            }
+
+            // Draw background
+            switch (this.bg_type) {
+                case Vame.BGType.COLOR:
+                    context.set_source_rgb(this.background_color[0], this.background_color[1], this.background_color[2]);
+                    context.rectangle(0, 0, alloc.width, alloc.height);
+                    context.fill();
+                    break;
+
+                case Vame.BGType.FUNCTION:
+                    this.draw_background(context);
+                    break;
+            }
+
+            // Draw all sprites
+            foreach (Vame.Sprite sprite in this.sprites) {
+                Cairo.ImageSurface surface = sprite.image.surface;
+                int x = sprite.x + sprite.anchor_x;
+                int y = sprite.y + sprite.anchor_y;
+
+                context.save();
+                context.translate(x, y);
+
+                context.rotate(Vame.Utils.degrees_to_radians(sprite.rotation));
+
+                context.set_source_surface(surface, -sprite.anchor_x, -sprite.anchor_y);
+                context.rectangle(-sprite.anchor_x, -sprite.anchor_y, surface.get_width(), surface.get_height());
+                context.fill();
+
+                context.restore();
+            }
+
+            foreach (Vame.Text text in this.texts) {
+                context.move_to(text.x, text.y);
+                context.set_source_rgb(text.color[0], text.color[1], text.color[2]);
+                context.set_font_size(text.font_size);
+                context.select_font_face(text.font_face, Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
+                context.show_text(text.text);
+            }
+
+            return false;
         }
 
         public void add_sprite(Vame.Sprite sprite) {
@@ -121,99 +279,8 @@ namespace Vame {
             });
         }
 
-        private bool button_press_event_cb(Gtk.Widget self, Gdk.EventButton event) {
-            if (event.get_event_type() == Gdk.EventType.BUTTON_PRESS &&
-                event.get_event_type() != Gdk.EventType.DOUBLE_BUTTON_PRESS &&
-                event.get_event_type() != Gdk.EventType.TRIPLE_BUTTON_PRESS) {
-
-                ButtonType type = ButtonType.LEFT;
-                if (event.button == 1) {
-                    type = ButtonType.LEFT;
-                } else if (event.button == 2) {
-                    type = ButtonType.MIDDLE;
-                } else if (event.button == 3) {
-                    type = ButtonType.RIGHT;
-                }
-
-                this.click_released(type, (int)event.x, (int)event.y);
-                this.click(type, (int)event.x, (int)event.y);
-            }
-            return false;
-        }
-
-        private bool button_release_event_cb(Gtk.Widget self, Gdk.EventButton event) {
-            if (event.get_event_type() == Gdk.EventType.BUTTON_RELEASE &&
-                event.get_event_type() != Gdk.EventType.DOUBLE_BUTTON_PRESS &&
-                event.get_event_type() != Gdk.EventType.TRIPLE_BUTTON_PRESS) {
-
-                ButtonType type = ButtonType.LEFT;
-                if (event.button == 1) {
-                    type = ButtonType.LEFT;
-                } else if (event.button == 2) {
-                    type = ButtonType.MIDDLE;
-                } else if (event.button == 3) {
-                    type = ButtonType.RIGHT;
-                }
-
-                this.click_released(type, (int)event.x, (int)event.y);
-            }
-            return false;
-        }
-
-        private bool motion_notify_event_cb(Gtk.Widget self, Gdk.EventMotion event) {
-            this.motion((int)event.x, (int)event.y);
-            return false;
-        }
-
-        private bool draw_cb(Gtk.Widget self, Cairo.Context context) {
-            Gtk.Allocation alloc;
-            this.get_allocation(out alloc);
-
-            if (this.size[0] != alloc.width || this.size[1] != alloc.height) {
-                this.size = { alloc.width, alloc.height };
-                this.size_changed(alloc.width, alloc.height);
-            }
-
-            // Draw background
-            switch (this.bg_type) {
-                case Vame.BGType.COLOR:
-                    context.set_source_rgb(this.background_color[0], this.background_color[1], this.background_color[2]);
-                    context.rectangle(0, 0, alloc.width, alloc.height);
-                    context.fill();
-                    break;
-
-                case Vame.BGType.FUNCTION:
-                    this.draw_background(context);
-                    break;
-            }
-
-            // Draw all sprites
-            foreach (Vame.Sprite sprite in this.sprites) {
-                Cairo.ImageSurface surface = sprite.image.surface;
-                int x = sprite.x + sprite.anchor_x;
-                int y = sprite.y + sprite.anchor_y;
-
-                context.save();
-                context.translate(x, y);
-
-                context.rotate(Vame.Utils.degrees_to_radians(sprite.rotation));
-
-                context.set_source_surface(surface, -sprite.anchor_x, -sprite.anchor_y);
-                context.rectangle(-sprite.anchor_x, -sprite.anchor_y, surface.get_width(), surface.get_height());
-                context.fill();
-
-                context.restore();
-            }
-
-            foreach (Vame.Text text in this.texts) {
-                context.move_to(text.x, text.y);
-                context.set_source_rgb(text.color[0], text.color[1], text.color[2]);
-                context.set_font_size(text.font_size);
-                context.select_font_face(text.font_face, Cairo.FontSlant.NORMAL, Cairo.FontWeight.NORMAL);
-                context.show_text(text.text);
-            }
-
-            return false;
+        public string[] get_pressed_keys() {
+            return this.pressed_keys;
         }
     }
 }

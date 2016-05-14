@@ -125,7 +125,7 @@ namespace Vame {
 
             this.area = area;
             this.handler_click = this.area.click.connect(this.check_click);
-            this.handler_motion = this.area.motion.connect(this.check_in);
+            this.handler_motion = this.area.pointer_motion.connect(this.check_in);
         }
 
         public void remove_of_the_box() {
