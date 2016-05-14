@@ -48,6 +48,7 @@ namespace Vame {
             this.bg_type = Vame.BGType.COLOR;
             this.pressed_keys = { };
 
+            this.set_can_focus(true);
             this.add_events(Gdk.EventMask.BUTTON_PRESS_MASK |
                             Gdk.EventMask.BUTTON_RELEASE_MASK |
                             Gdk.EventMask.POINTER_MOTION_MASK |
@@ -128,11 +129,11 @@ namespace Vame {
                 // check with (key in this.pressed_keys) throw some warnings
                 foreach (string _key in this.pressed_keys) {
                     if (_key == key) {
-                        return false;
+                        return true;
                     }
                 }
 
-                return true;
+                return false;
             });
 
             return false;
@@ -281,6 +282,11 @@ namespace Vame {
 
         public string[] get_pressed_keys() {
             return this.pressed_keys;
+        }
+
+        public void get_size(out int width, out int height) {
+            width = this.size[0];
+            height = this.size[1];
         }
     }
 }
