@@ -2,3 +2,4 @@ examples/chess/chess
 examples/collision/collision
 examples/gtk_integration/gtk_integration
 examples/keyboard_control/keyboard_control
+examples/framed_sprite/framed_sprite

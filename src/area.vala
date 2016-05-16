@@ -184,7 +184,7 @@ namespace Vame {
 
             // Draw all sprites
             foreach (Vame.Sprite sprite in this.sprites) {
-                Cairo.ImageSurface surface = sprite.image.surface;
+                Cairo.Surface surface = Gdk.cairo_surface_create_from_pixbuf(sprite.image.pixbuf, 1, null);  // FIXME: change scale
                 int x = sprite.x + sprite.anchor_x;
                 int y = sprite.y + sprite.anchor_y;
 
@@ -194,7 +194,7 @@ namespace Vame {
                 context.rotate(Vame.Utils.degrees_to_radians(sprite.rotation));
 
                 context.set_source_surface(surface, -sprite.anchor_x, -sprite.anchor_y);
-                context.rectangle(-sprite.anchor_x, -sprite.anchor_y, surface.get_width(), surface.get_height());
+                context.rectangle(-sprite.anchor_x, -sprite.anchor_y, sprite.image.get_width(), sprite.image.get_height());
                 context.fill();
 
                 context.restore();
